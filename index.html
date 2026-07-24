@@ -16,6 +16,7 @@
     --gold:#b9761b; --gold-soft:#f3e6cf;
     --cat-eat:#d6492b; --cat-pub:#9b4368; --cat-coffee:#7a5a44; --cat-chippy:#b98600;
     --cat-walk:#3f7f43; --cat-cycle:#2277b8; --cat-sport:#7150b0; --cat-nearby:#5e7480;
+    --cat-sauna:#e07d1e; --cat-comedy:#d1418a;
     --shadow:0 1px 2px rgba(16,38,43,.06), 0 6px 20px rgba(16,38,43,.06);
     --r:16px;
     --serif:ui-serif,"New York","Iowan Old Style",Palatino,"Palatino Linotype",Georgia,serif;
@@ -28,6 +29,7 @@
     --gold:#e3a94b; --gold-soft:#3a2f1a;
     --cat-eat:#f0755a; --cat-pub:#d67fa6; --cat-coffee:#c0946e; --cat-chippy:#e7b53e;
     --cat-walk:#66be6a; --cat-cycle:#5aaee8; --cat-sport:#a688e0; --cat-nearby:#93a7b2;
+    --cat-sauna:#f2a24e; --cat-comedy:#f07ec2;
     --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 26px rgba(0,0,0,.36);
   }
   *{box-sizing:border-box}
@@ -153,7 +155,7 @@
   <header>
     <div class="eyebrow">MC &amp; RP · on the Kent coast</div>
     <h1>Deal — <em>a weekend recce.</em></h1>
-    <p class="lede">A pocket guide for the weekend: the best food, pubs, coffee, walks, rides and sport in and around town — on a real map, filterable, with <b>one tap to Google Maps</b> for every spot. Tap a pick, a pin, or a filter to explore.</p>
+    <p class="lede">A pocket guide for the weekend: the best food, pubs, coffee, walks, rides and sport, saunas and comedy in and around town — on a real map, filterable, with <b>one tap to Google Maps</b> for every spot. Tap a pick, a pin, or a filter to explore.</p>
   </header>
 
   <section class="sec" aria-label="Weekend picks">
@@ -183,8 +185,9 @@
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
 const CATS={eat:{label:"Eat",ico:"🍽️"},pub:{label:"Pubs",ico:"🍺"},coffee:{label:"Coffee",ico:"☕"},
-  chippy:{label:"Chippies",ico:"🐟"},walk:{label:"Walks",ico:"🥾"},cycle:{label:"Cycling",ico:"🚴"},sport:{label:"Sport",ico:"🏅"}};
-const SECTION_ORDER=["eat","pub","coffee","chippy","walk","cycle","sport"];
+  chippy:{label:"Chippies",ico:"🐟"},walk:{label:"Walks",ico:"🥾"},cycle:{label:"Cycling",ico:"🚴"},sport:{label:"Sport",ico:"🏅"},
+  sauna:{label:"Sauna & dip",ico:"🧖"},comedy:{label:"Comedy",ico:"🎤"}};
+const SECTION_ORDER=["eat","pub","coffee","chippy","walk","cycle","sport","sauna","comedy"];
 const K=id=>"https://www.komoot.com/smarttour/"+id;
 
 const P=[
@@ -200,8 +203,8 @@ const P=[
    blurb:"Artsy bar-restaurant with brunch, strong cocktails and upstairs sea views."},
   {cat:"eat",name:"The Goodwin",type:"Gastropub",price:"££",area:"32 High St",lat:51.2225,lng:1.4010,
    blurb:"Modern gastropub — pan-roasted fish, chargrilled meats, decent wine list."},
-  {cat:"eat",name:"The Blue Pelican",type:"Japanese",price:"££",area:"Beach St",lat:51.2246,lng:1.4036,
-   blurb:"Japanese twist on British produce — ramen, tempura, sake martinis. Distinctive."},
+  {cat:"eat",name:"The Blue Pelican",type:"Japanese small plates",price:"££–£££",area:"83 Beach St",lat:51.22514,lng:1.40390,
+   blurb:"Seafront Japanese small plates from the team behind The Rose — a Tokyo-trained kitchen turning Kentish seafood into clay-baked donabe rice and crab croquettes, with a serious sake & whisky list. Grace Dent was 'smitten'.",note:"Fri dinner · Sat lunch & dinner · Sun ramen 12–3. Cellar Bar Fri/Sat from 6pm (walk-in)."},
   {cat:"eat",name:"Dine India",type:"Indian",price:"££",area:"Central Deal",lat:51.2240,lng:1.4000,
    blurb:"Cited as the best Indian in town now — dine-in and delivery."},
   {cat:"eat",name:"Star of India",type:"Indian",price:"££",area:"Central Deal",lat:51.2235,lng:1.4005,
@@ -297,7 +300,29 @@ const P=[
   {cat:"sport",name:"REWD Padel, Ramsgate",type:"Padel",area:"Ramsgate",lat:51.3400,lng:1.4000,nearby:true,
    blurb:"Billed as Kent's first purpose-built padel centre. ~20–25 min — extra courts if you want variety."},
   {cat:"eat",name:"Quex Barn",type:"Farm shop 🧺",price:"££",area:"Birchington",lat:51.3720,lng:1.3120,nearby:true,
-   blurb:"Larger farm-shop-plus-food destination if you're happy to drive further out."}
+   blurb:"Larger farm-shop-plus-food destination if you're happy to drive further out."},
+  {cat:"sauna",name:"Steam Punk Sauna @ Betteshanger",place:"Betteshanger Country Park",type:"Wood-fired sauna + cold plunge",price:"~£15",area:"Betteshanger Park",lat:51.22470,lng:1.35790,nearby:true,
+   blurb:"The nearest operating sauna to Deal — a hand-built wood-fired cabin (up to 8) with a cold plunge in the parkland. Communal ~£15pp or private hire; sound-bath & contrast classes too.",note:"~3 mi / ~10 min drive. Scheduled event days — confirm dates & book ahead.",links:[{l:"Betteshanger events",u:"https://www.betteshanger-park.co.uk/"}]},
+  {cat:"sauna",name:"Sea Scrub Sauna, Walmer",type:"Beach sauna (planned)",area:"Walmer seafront",lat:51.19850,lng:1.40450,nearby:true,
+   blurb:"A mobile beach sauna + cold plunge proposed for Walmer seafront — the one to watch, and the closest to home if it opens.",note:"PLANNED — not yet open (in planning as of 2026). Would be ~1.5 mi / walkable.",links:[{l:"Sea Scrub",u:"https://seascrubsauna.co.uk/"}]},
+  {cat:"sauna",name:"Rebels Coffee & Sauna, Dover",type:"Sauna + cold plunge (drop-in)",price:"~£10",area:"Dover",lat:51.12500,lng:1.31600,nearby:true,
+   blurb:"The most reliable regular drop-in nearby — traditional sauna with cold plunge (and a sea cold-plunge option) plus coffee. Walk-ins 7 days; ~£40/mo unlimited.",note:"~8 mi / ~20 min. Same team as Steam Punk.",links:[{l:"Book",u:"https://rebelsdover.simplybook.it/v2/"}]},
+  {cat:"sauna",name:"Sea Scrub Sauna, Folkestone",type:"Beach spa",price:"~£20",area:"Harbour Arm, Folkestone",lat:51.08000,lng:1.18800,nearby:true,
+   blurb:"The flagship — two wood-fired saunas with sea views, two cold plunges (~5° & ~16°), a hot tub and café. The big destination day out.",note:"~18 mi / ~35–40 min.",links:[{l:"Sea Scrub",u:"https://seascrubsauna.co.uk/folkestone/"}]},
+  {cat:"sauna",name:"Sea Scrub Sauna, Margate",type:"Beach sauna",price:"~£75 private",area:"Main Sands, Margate",lat:51.38900,lng:1.38100,nearby:true,
+   blurb:"Nordic wood-fired barrel sauna + Saunum cube with whisky-barrel ice plunges, right on the sand. A fun Thanet trip.",note:"~30 min.",links:[{l:"Sea Scrub",u:"https://seascrubsauna.co.uk/"}]},
+  {cat:"comedy",name:"The Astor Theatre",type:"Community theatre",area:"Stanhope Rd",lat:51.22160,lng:1.39850,
+   blurb:"Deal's own arts venue — a varied programme with intermittent comedy, including tour warm-ups from bigger names. Walkable; check the listings.",links:[{l:"What's on",u:"https://theastor.co.uk/events"}]},
+  {cat:"comedy",name:"Wine Gums Comedy @ The Forester",place:"The Forester",type:"Pub comedy night",area:"The Marina",lat:51.22470,lng:1.40470,
+   blurb:"An occasional touring stand-up night at a seafront Deal pub — not monthly, but the most walkable comedy in town. Worth following for dates.",note:"Occasional — check upcoming dates.",links:[{l:"Promoter",u:"https://www.facebook.com/winegumscomedynights/"}]},
+  {cat:"comedy",name:"Quarterhouse, Folkestone",type:"Arts centre · regular comedy",area:"Folkestone",lat:51.08100,lng:1.18200,nearby:true,
+   blurb:"The most reliable comedy programme within reach — a steady strand plus Chump's Comedy Club nights. A safe bet.",note:"~30 min.",links:[{l:"Comedy listings",u:"https://www.creativefolkestone.org.uk/whats-on/category/comedy/"}]},
+  {cat:"comedy",name:"The Marlowe Theatre, Canterbury",type:"Touring stand-up",area:"Canterbury",lat:51.27950,lng:1.08000,nearby:true,
+   blurb:"Big-name touring comedians year-round — the most dependable place to catch someone off the telly.",note:"~30–35 min.",links:[{l:"What's on",u:"https://marlowetheatre.com"}]},
+  {cat:"comedy",name:"Bangers Comedy Club, Margate",place:"Olby's",type:"Club night (recurring)",area:"Olby's, Margate",lat:51.38800,lng:1.38300,nearby:true,
+   blurb:"A proper recurring club night that sells out — award-winning and TV comedians on one bill. The best 'club' feel nearby.",note:"~35–40 min.",links:[{l:"Tickets",u:"https://www.visitthanet.co.uk/events/bangers-comedy-club-sep-2026-155338/"}]},
+  {cat:"comedy",name:"The Comedy Store @ Dreamland, Margate",place:"Dreamland",type:"Touring club nights",area:"Dreamland, Margate",lat:51.38650,lng:1.38200,nearby:true,
+   blurb:"The famous London club's touring shows at Dreamland — roughly quarterly, reliably high quality.",note:"~35–40 min.",links:[{l:"Dates",u:"https://www.visitthanet.co.uk/events/the-comedy-store-may-2026-151465/"}]}
 ];
 
 // Load the place on Google Maps (its card / dropped pin) rather than starting turn-by-turn —
@@ -306,7 +331,7 @@ const mapsUrl=p=>{
   if(p.dist) return `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}`; // routes: exact start point
   // in-town spots get ", Deal, Kent" so generic names don't resolve elsewhere; out-of-town keep their own place name
   const loc=p.nearby ? `${p.area?p.area+', ':''}Kent` : `${p.area?p.area+', ':''}Deal, Kent`;
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name+', '+loc)}`;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((p.place||p.name)+', '+loc)}`;
 };
 const catVar=c=>`var(--cat-${c})`;
 
@@ -338,6 +363,8 @@ SECTION_ORDER.forEach(cat=>{
   sec.innerHTML=`<div class="sec-h"><h2>${CATS[cat].ico} ${CATS[cat].label}</h2><span class="count">${items.length} spots</span></div>`;
   if(cat==='walk')sec.querySelector('.sec-h').insertAdjacentHTML('afterend',`<p class="sec-note">Name · distance · elevation · difficulty, with the Komoot / AllTrails route link.</p>`);
   if(cat==='cycle')sec.querySelector('.sec-h').insertAdjacentHTML('afterend',`<p class="sec-note">Road, gravel and MTB — every route links out to Komoot (or Sustrans for NCN 1).</p>`);
+  if(cat==='sauna')sec.querySelector('.sec-h').insertAdjacentHTML('afterend',`<p class="sec-note">No sauna on Deal's own seafront yet — nearest operating is Steam Punk at Betteshanger (~10 min); a Walmer beach sauna is in the pipeline.</p>`);
+  if(cat==='comedy')sec.querySelector('.sec-h').insertAdjacentHTML('afterend',`<p class="sec-note">No dedicated club in Deal — the Astor and occasional pub nights are walkable; the reliable stuff is a short drive to Folkestone, Canterbury or Margate.</p>`);
   const grid=document.createElement('div');grid.className='grid';
   items.forEach(p=>{
     const card=document.createElement('article');card.className='card';card.dataset.cat=p.cat;card.dataset.nearby=p.nearby?1:0;
