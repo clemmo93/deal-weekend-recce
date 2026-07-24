@@ -149,6 +149,47 @@
     border:2px solid var(--surface);box-shadow:0 1px 5px rgba(0,0,0,.35);}
   .leaflet-bar a{background:var(--surface);color:var(--ink);border-color:var(--line);}
   .leaflet-bar a:hover{background:var(--surface-2);}
+
+  /* auth bar */
+  .authbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 2px;padding:10px 13px;
+    border-radius:12px;border:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow);font-size:13px;color:var(--ink-soft);}
+  .authbar.in{border-color:var(--accent);}
+  .authbar .ab-dot{width:8px;height:8px;border-radius:50%;background:#37b34a;box-shadow:0 0 0 3px color-mix(in srgb,#37b34a 25%,transparent);flex:0 0 auto;}
+  .authbar b{color:var(--ink);}
+  .ab-btn{margin-left:auto;font:inherit;font-weight:600;border-radius:8px;padding:6px 11px;border:1px solid var(--line);
+    background:var(--surface-2);color:var(--ink);cursor:pointer;white-space:nowrap;}
+  .ab-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .ab-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+  /* hearts + notes on cards */
+  .board{margin-top:2px;padding-top:11px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:9px;}
+  .hearts{display:flex;gap:6px;align-items:center;}
+  .hchip{font:inherit;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:4px;padding:4px 10px;
+    border-radius:999px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink-mute);cursor:pointer;transition:all .12s ease;}
+  .hchip.on{background:color-mix(in srgb,#e0245e 14%,var(--surface));border-color:#e0245e;color:#e0245e;}
+  .hchip[disabled]{cursor:default;}
+  .hchip:not([disabled]):hover{border-color:#e0245e;}
+  .notes-toggle{align-self:flex-start;font:inherit;font-size:12.5px;font-weight:600;color:var(--ink-soft);background:none;border:none;padding:2px 0;cursor:pointer;}
+  .notes-toggle:hover{color:var(--accent-ink);}
+  .notes{display:flex;flex-direction:column;gap:9px;}
+  .note-list{display:flex;flex-direction:column;gap:7px;}
+  .note-row{display:flex;gap:8px;align-items:flex-start;font-size:13px;}
+  .note-ini{flex:0 0 auto;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:10px;font-weight:800;color:#fff;margin-top:1px;}
+  .note-ini.M{background:var(--accent);}
+  .note-ini.R{background:var(--cat-comedy);}
+  .note-txt{flex:1;color:var(--ink);line-height:1.4;}
+  .note-when{display:block;font-size:10.5px;color:var(--ink-mute);margin-top:1px;}
+  .note-del{flex:0 0 auto;background:none;border:none;color:var(--ink-mute);cursor:pointer;font-size:16px;line-height:1;padding:0 2px;}
+  .note-del:hover{color:#e0245e;}
+  .note-add{display:flex;gap:6px;}
+  .note-input{flex:1;min-width:0;font:inherit;font-size:13px;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);}
+  .note-input:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+  .note-empty{font-size:12px;color:var(--ink-mute);font-style:italic;}
+  .empty{margin:20px 2px;padding:22px;text-align:center;font-size:13.5px;color:var(--ink-mute);
+    border:1px dashed var(--line);border-radius:var(--r);text-wrap:balance;}
+  .mk-heart{position:absolute;left:58%;top:-3px;font-size:11px;color:#e0245e;line-height:1;
+    text-shadow:0 0 2px var(--surface),0 0 3px var(--surface);}
+
   @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}html{scroll-behavior:auto}}
 </style>
 </head>
@@ -160,6 +201,8 @@
     <h1>Deal — <em>a weekend recce.</em></h1>
     <p class="lede">A pocket guide for the weekend: the best food, pubs, coffee, walks, rides and sport, saunas and comedy in and around town — on a real map, filterable, with <b>one tap to Google Maps</b> for every spot. Tap a pick, a pin, or a filter to explore.</p>
   </header>
+
+  <div id="authbar" class="authbar out" hidden></div>
 
   <section class="sec" aria-label="Weekend picks">
     <div class="sec-h"><h2>Weekend picks</h2><span class="count">Robyn's shortlist</span></div>
@@ -177,6 +220,7 @@
 
   <div class="filterbar"><div class="chips" id="chips"></div></div>
   <div id="sections"></div>
+  <p id="emptyState" class="empty" hidden></p>
 
   <footer>
     Gathered ~July 2026 for Matthew &amp; Robyn. Ratings, hours and openings change — check before you go. Map data © OpenStreetMap contributors, tiles © CARTO. Made with love for a good weekend. 🌊
@@ -337,6 +381,7 @@ const mapsUrl=p=>{
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((p.place||p.name)+', '+loc)}`;
 };
 const catVar=c=>`var(--cat-${c})`;
+const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); // stable id for Firestore docs
 
 /* ---------- PICKS ---------- */
 const PICKS=[
@@ -371,6 +416,7 @@ SECTION_ORDER.forEach(cat=>{
   const grid=document.createElement('div');grid.className='grid';
   items.forEach(p=>{
     const card=document.createElement('article');card.className='card';card.dataset.cat=p.cat;card.dataset.nearby=p.nearby?1:0;
+    card.dataset.id=slug(p.name);
     card.style.setProperty('--cat',catVar(p.cat));
     const tag=p.type?p.type:(p.cat==='walk'?'Walk':p.cat==='cycle'?'Ride':'');
     const starTxt=p.pick?`<span class="star" title="Weekend pick">★</span>`:'';
@@ -384,16 +430,32 @@ SECTION_ORDER.forEach(cat=>{
         <a class="btn primary" href="${mapsUrl(p)}" target="_blank" rel="noopener">${pinIco} Open in Google Maps</a>
         <button class="btn ghost" type="button" data-map="${p.name}">Show on map</button>
         ${links}
+      </div>
+      <div class="board" data-id="${slug(p.name)}">
+        <div class="hearts"></div>
+        <button class="notes-toggle" type="button" aria-expanded="false">📝 Notes</button>
+        <div class="notes" hidden>
+          <div class="note-list"></div>
+          <div class="note-add">
+            <input class="note-input" type="text" maxlength="240" placeholder="Add a note…" aria-label="Add a note about ${p.name.replace(/"/g,'&quot;')}">
+            <button class="note-send btn" type="button">Add</button>
+          </div>
+        </div>
       </div>`;
     grid.appendChild(card);cardById[p.name]=card;
   });
   sec.appendChild(grid);secWrap.appendChild(sec);
 });
-secWrap.addEventListener('click',e=>{const b=e.target.closest('[data-map]');if(b)showOnMap(b.dataset.map,true);});
+secWrap.addEventListener('click',e=>{
+  const nt=e.target.closest('.notes-toggle');
+  if(nt){const panel=nt.parentElement.querySelector('.notes');const open=panel.hasAttribute('hidden');
+    if(open)panel.removeAttribute('hidden');else panel.setAttribute('hidden','');nt.setAttribute('aria-expanded',open);return;}
+  const b=e.target.closest('[data-map]');if(b)showOnMap(b.dataset.map,true);
+});
 
 /* ---------- FILTER CHIPS ---------- */
 const chipsEl=document.getElementById('chips');
-const filters=[{k:'all',label:'All'}].concat(SECTION_ORDER.map(c=>({k:c,label:CATS[c].label,cat:c}))).concat([{k:'nearby',label:'Nearby / day-trip'}]);
+const filters=[{k:'all',label:'All'},{k:'loved',label:'❤ Loved'}].concat(SECTION_ORDER.map(c=>({k:c,label:CATS[c].label,cat:c}))).concat([{k:'nearby',label:'Nearby / day-trip'}]);
 let active='all';
 filters.forEach(f=>{
   const c=document.createElement('button');c.className='chip';c.type='button';c.dataset.k=f.k;c.setAttribute('aria-pressed',f.k==='all');
@@ -405,12 +467,20 @@ chipsEl.addEventListener('wheel',e=>{
   if(chipsEl.scrollWidth<=chipsEl.clientWidth) return;
   if(Math.abs(e.deltaY)>Math.abs(e.deltaX)){chipsEl.scrollLeft+=e.deltaY;e.preventDefault();}
 },{passive:false});
-function matches(k,cat,nearby){return k==='all'?true:k==='nearby'?nearby:cat===k;}
+function matches(k,cat,nearby,id){
+  if(k==='all')return true;
+  if(k==='loved')return !!(window.DEAL&&window.DEAL.loved&&window.DEAL.loved.has(id));
+  if(k==='nearby')return !!nearby;
+  return cat===k;
+}
 function applyFilter(k){
   active=k;
   [...chipsEl.children].forEach(ch=>ch.setAttribute('aria-pressed',ch.dataset.k===k));
-  document.querySelectorAll('.card').forEach(card=>card.classList.toggle('hide',!matches(k,card.dataset.cat,card.dataset.nearby==='1')));
+  document.querySelectorAll('.card').forEach(card=>card.classList.toggle('hide',!matches(k,card.dataset.cat,card.dataset.nearby==='1',card.dataset.id)));
   document.querySelectorAll('#sections .sec').forEach(sec=>{const any=[...sec.querySelectorAll('.card')].some(c=>!c.classList.contains('hide'));sec.classList.toggle('hide',!any);});
+  const anyVisible=[...document.querySelectorAll('.card')].some(c=>!c.classList.contains('hide'));
+  const es=document.getElementById('emptyState');
+  if(es){es.hidden=anyVisible;es.textContent=k==='loved'?'No hearts yet — tap ♡ on a place you’ve been or rate, and it’ll show up here for both of you.':'Nothing in this category.';}
   renderMarkers();
 }
 
@@ -433,9 +503,10 @@ setTheme(theme);
 
 /* ---------- MAP (Leaflet) ---------- */
 let map,cluster,markerByName={};
-function markerIcon(p){
+function markerIcon(p,loved){
   const ring=p.pick?'<span class="mk-ring"></span>':'';
-  return L.divIcon({className:'mk',html:`${ring}<span class="mk-dot" style="background:${catVar(p.cat)}"></span>`,iconSize:[24,24],iconAnchor:[12,12],popupAnchor:[0,-11]});
+  const heart=loved?'<span class="mk-heart">♥</span>':'';
+  return L.divIcon({className:'mk',html:`${ring}<span class="mk-dot" style="background:${catVar(p.cat)}"></span>${heart}`,iconSize:[24,24],iconAnchor:[12,12],popupAnchor:[0,-11]});
 }
 function popupHtml(p){
   const tag=p.type||(p.cat==='walk'?'Walk':p.cat==='cycle'?'Ride':'');
@@ -447,7 +518,7 @@ function popupHtml(p){
 function renderMarkers(){
   if(!cluster)return;
   cluster.clearLayers();
-  P.forEach(p=>{if(matches(active,p.cat,p.nearby))cluster.addLayer(markerByName[p.name]);});
+  P.forEach(p=>{if(matches(active,p.cat,p.nearby,slug(p.name)))cluster.addLayer(markerByName[p.name]);});
 }
 function showOnMap(name){
   const p=P.find(x=>x.name===name);if(!p)return;
@@ -470,7 +541,7 @@ function initMap(){
   tiles=L.tileLayer(theme==='dark'?DARK_TILES:LIGHT_TILES,{maxZoom:19,subdomains:'abcd',
     attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'}).addTo(map);
   cluster=L.markerClusterGroup({maxClusterRadius:44,spiderfyOnMaxZoom:true,showCoverageOnHover:false});
-  P.forEach(p=>{const m=L.marker([p.lat,p.lng],{icon:markerIcon(p),title:p.name});
+  P.forEach(p=>{const m=L.marker([p.lat,p.lng],{icon:markerIcon(p,false),title:p.name});
     m.bindPopup(popupHtml(p),{closeButton:true,maxWidth:250,autoPanPadding:[18,18],keepInView:true});markerByName[p.name]=m;});
   map.addLayer(cluster);renderMarkers();
   // guard against the container starting at zero size (backgrounded/slow-laying-out tabs):
@@ -485,6 +556,151 @@ function initMap(){
 if(typeof L==='undefined'||!L.markerClusterGroup){
   document.getElementById('map').innerHTML='<div class="mapfail">The interactive map needs an internet connection (it couldn\'t load the map library). Everything below still works — each place has a <b>Directions</b> link that opens Apple/Google Maps.</div>';
 }else{initMap();}
+
+// bridge for the Firebase module (hearts + notes live here)
+window.DEAL={
+  P, slug, cardById, markerByName,
+  loved:new Set(),
+  reapply:()=>{ if(active==='loved') applyFilter('loved'); },   // refresh the Loved view when hearts change
+  setLoved:(name,loved)=>{const m=markerByName[name];if(m&&m.setIcon)m.setIcon(markerIcon(P.find(x=>x.name===name),loved));}
+};
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
+         onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+         collection, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+const firebaseConfig={apiKey:"AIzaSyB_zdxUcPoEJQYXisMIxky_dyOW7l9yxaY",authDomain:"deal-recce.firebaseapp.com",
+  projectId:"deal-recce",storageBucket:"deal-recce.firebasestorage.app",messagingSenderId:"590019876921",
+  appId:"1:590019876921:web:c44ed10b77a16ca5a755e8"};
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+let db;
+try{db=initializeFirestore(app,{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})});}
+catch(e){db=initializeFirestore(app,{});}
+
+// the two people allowed on the board (must match the Firestore rules)
+const USERS={
+  "matthewclementson93@gmail.com":{name:"Matthew",initial:"M"},
+  "robyn.e.philip@gmail.com":{name:"Robyn",initial:"R"}
+};
+const ORDER=Object.keys(USERS);
+const D=window.DEAL, state={}, authbar=document.getElementById('authbar');
+let me=null, unsub=null;
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const when=ts=>{try{const d=new Date(ts);return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}catch(e){return'';}};
+
+authbar.hidden=false;
+const provider=new GoogleAuthProvider();
+provider.setCustomParameters({prompt:'select_account'});
+setPersistence(auth,browserLocalPersistence).catch(()=>{});
+getRedirectResult(auth).catch(()=>{});
+
+function signIn(){
+  signInWithPopup(auth,provider).catch(err=>{
+    const c=err&&err.code;
+    if(c==='auth/popup-blocked'||c==='auth/operation-not-supported-in-this-environment') signInWithRedirect(auth,provider);
+    else if(c!=='auth/popup-closed-by-user'&&c!=='auth/cancelled-popup-request') console.warn('sign-in',err);
+  });
+}
+function renderAuth(){
+  if(me&&USERS[me]){
+    authbar.className='authbar in';
+    authbar.innerHTML=`<span class="ab-dot"></span><span>Synced · <b>${USERS[me].name}</b></span><button class="ab-btn" type="button" id="ab-out">Sign out</button>`;
+  }else{
+    authbar.className='authbar out';
+    authbar.innerHTML=`<span>🔒 Sign in with Google to save &amp; share ❤ and notes with each other</span><button class="ab-btn primary" type="button" id="ab-in">Sign in with Google</button>`;
+  }
+}
+authbar.addEventListener('click',e=>{ if(e.target.id==='ab-in')signIn(); if(e.target.id==='ab-out')signOut(auth); });
+
+onAuthStateChanged(auth,user=>{
+  if(user&&!USERS[user.email]){                    // signed in but not one of us
+    me=null; if(unsub){unsub();unsub=null;}
+    authbar.className='authbar out';
+    authbar.innerHTML=`<span>🔒 This board is private to Matthew &amp; Robyn — you're signed in as ${esc(user.email)}.</span><button class="ab-btn" type="button" id="ab-out">Sign out</button>`;
+    clearBoards(false); return;
+  }
+  me=user?user.email:null;
+  renderAuth();
+  if(me) subscribe(); else { if(unsub){unsub();unsub=null;} clearBoards(false); }
+});
+
+function subscribe(){
+  if(unsub) return;
+  clearBoards(true);
+  unsub=onSnapshot(collection(db,'deal_items'),snap=>{
+    snap.forEach(s=>state[s.id]=s.data());
+    D.loved.clear();
+    D.P.forEach(p=>{
+      const id=D.slug(p.name), d=state[id]||{}, hearts=d.hearts||{};
+      const notes=(d.notes||[]).slice().sort((a,b)=>(a.ts||0)-(b.ts||0));
+      const lovedBy=ORDER.filter(e=>hearts[e]);
+      if(lovedBy.length) D.loved.add(id);
+      paint(p,hearts,notes);
+      if(D.setLoved) D.setLoved(p.name,lovedBy.length>0);
+    });
+    if(D.reapply) D.reapply();
+  },err=>console.warn('board snapshot',err));
+}
+function boardEl(p){const c=D.cardById[p.name];return c?c.querySelector('.board'):null;}
+function paint(p,hearts,notes){
+  const b=boardEl(p); if(!b) return;
+  b.querySelector('.hearts').innerHTML=ORDER.map(email=>{
+    const on=!!hearts[email], u=USERS[email], mine=email===me;
+    return `<button class="hchip ${on?'on':''}" data-email="${email}" ${mine?'':'disabled'} title="${u.name}${mine?' (you)':''}">${on?'♥':'♡'} ${u.initial}</button>`;
+  }).join('');
+  b.querySelector('.note-list').innerHTML = notes.length ? notes.map(n=>{
+    const u=USERS[n.by]||{initial:'?',name:'?'}, mine=n.by===me;
+    return `<div class="note-row"><span class="note-ini ${u.initial}">${u.initial}</span><span class="note-txt">${esc(n.text)}<span class="note-when">${esc(n.name||u.name)} · ${when(n.ts)}</span></span>${mine?`<button class="note-del" type="button" data-ts="${n.ts}" title="Delete">×</button>`:''}</div>`;
+  }).join('') : `<div class="note-empty">No notes yet.</div>`;
+  b.querySelector('.notes-toggle').textContent=`📝 Notes${notes.length?` (${notes.length})`:''}`;
+}
+function clearBoards(loading){
+  document.querySelectorAll('.board').forEach(b=>{
+    b.querySelector('.hearts').innerHTML=ORDER.map(e=>`<button class="hchip" data-email="${e}" title="${USERS[e].name}">♡ ${USERS[e].initial}</button>`).join('');
+    b.querySelector('.note-list').innerHTML=`<div class="note-empty">${loading?'Loading…':'Sign in to add notes.'}</div>`;
+    b.querySelector('.notes-toggle').textContent='📝 Notes';
+  });
+  if(D.loved){D.loved.clear(); if(D.reapply)D.reapply();}
+  D.P.forEach(p=>{ if(D.setLoved) D.setLoved(p.name,false); });
+}
+async function toggleHeart(id){
+  const cur=!!(state[id]&&state[id].hearts&&state[id].hearts[me]);
+  try{await setDoc(doc(db,'deal_items',id),{hearts:{[me]:!cur}},{merge:true});}catch(e){console.warn('heart',e);}
+}
+async function addNote(id,inp){
+  const text=(inp.value||'').trim(); if(!text) return;
+  const cur=(state[id]&&state[id].notes)?state[id].notes.slice():[];
+  cur.push({by:me,name:USERS[me].name,text,ts:Date.now()});
+  inp.value='';
+  try{await setDoc(doc(db,'deal_items',id),{notes:cur},{merge:true});}catch(e){console.warn('note add',e);}
+}
+async function delNote(id,ts){
+  const cur=(state[id]&&state[id].notes)?state[id].notes.slice():[];
+  const next=cur.filter(n=>!(String(n.ts)===String(ts)&&n.by===me));
+  try{await setDoc(doc(db,'deal_items',id),{notes:next},{merge:true});}catch(e){console.warn('note del',e);}
+}
+
+const sections=document.getElementById('sections');
+sections.addEventListener('click',e=>{
+  const chip=e.target.closest('.hchip');
+  if(chip){ if(!me){signIn();return;} if(chip.dataset.email===me) toggleHeart(chip.closest('.board').dataset.id); return; }
+  const send=e.target.closest('.note-send');
+  if(send){ if(!me){signIn();return;} const b=send.closest('.board'); addNote(b.dataset.id,b.querySelector('.note-input')); return; }
+  const del=e.target.closest('.note-del');
+  if(del){ if(me) delNote(del.closest('.board').dataset.id,del.dataset.ts); return; }
+});
+sections.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&e.target.classList&&e.target.classList.contains('note-input')){
+    e.preventDefault(); if(!me){signIn();return;} const b=e.target.closest('.board'); addNote(b.dataset.id,e.target);
+  }
+});
+
+clearBoards(true);   // placeholder until auth resolves
 </script>
 </body>
 </html>
