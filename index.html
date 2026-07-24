@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Deal — a weekend recce</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+<style>
+  :root{
+    --bg:#eef2f1; --surface:#ffffff; --surface-2:#f5f9f8; --surface-3:#eaf1ef;
+    --ink:#14262b; --ink-soft:#46595e; --ink-mute:#748a8e; --line:#dbe6e3;
+    --accent:#0e7c86; --accent-ink:#0a5f67; --accent-soft:#d7ebeb;
+    --gold:#b9761b; --gold-soft:#f3e6cf;
+    --cat-eat:#d6492b; --cat-pub:#9b4368; --cat-coffee:#7a5a44; --cat-chippy:#b98600;
+    --cat-walk:#3f7f43; --cat-cycle:#2277b8; --cat-sport:#7150b0; --cat-nearby:#5e7480;
+    --shadow:0 1px 2px rgba(16,38,43,.06), 0 6px 20px rgba(16,38,43,.06);
+    --r:16px;
+    --serif:ui-serif,"New York","Iowan Old Style",Palatino,"Palatino Linotype",Georgia,serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Roboto,Helvetica,Arial,sans-serif;
+  }
+  :root[data-theme="dark"]{
+    --bg:#0b1618; --surface:#12252a; --surface-2:#162e33; --surface-3:#1c383f;
+    --ink:#e9f1ee; --ink-soft:#aac0c1; --ink-mute:#7d9599; --line:#254349;
+    --accent:#3cb6be; --accent-ink:#74d6db; --accent-soft:#123a3e;
+    --gold:#e3a94b; --gold-soft:#3a2f1a;
+    --cat-eat:#f0755a; --cat-pub:#d67fa6; --cat-coffee:#c0946e; --cat-chippy:#e7b53e;
+    --cat-walk:#66be6a; --cat-cycle:#5aaee8; --cat-sport:#a688e0; --cat-nearby:#93a7b2;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 26px rgba(0,0,0,.36);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    line-height:1.5;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  .wrap{max-width:940px;margin:0 auto;padding:0 16px 64px;}
+  a{color:var(--accent-ink);text-decoration:none;}
+  h1,h2,h3,h4{margin:0;text-wrap:balance;font-family:var(--serif);font-weight:600;letter-spacing:-.01em;}
+
+  .themebtn{position:fixed;top:12px;right:12px;z-index:1200;width:40px;height:40px;border-radius:50%;
+    border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:17px;cursor:pointer;
+    box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;}
+  .themebtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+  header{padding:26px 0 14px;}
+  .eyebrow{text-transform:uppercase;letter-spacing:.16em;font-size:11px;font-weight:700;
+    color:var(--accent-ink);display:flex;align-items:center;gap:8px;}
+  .eyebrow::before{content:"";width:22px;height:2px;background:var(--accent);border-radius:2px;}
+  h1{font-size:clamp(30px,7vw,46px);margin:8px 0 6px;line-height:1.02;}
+  h1 em{font-style:italic;color:var(--accent-ink);}
+  .lede{color:var(--ink-soft);font-size:15px;max-width:60ch;margin:0;}
+  .lede b{color:var(--ink);font-weight:600;}
+
+  .sec{margin-top:30px;}
+  .sec-h{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;}
+  .sec-h h2{font-size:21px;}
+  .sec-h .count{font-size:12px;color:var(--ink-mute);font-variant-numeric:tabular-nums;}
+  .sec-note{font-size:12.5px;color:var(--ink-mute);margin:-4px 0 12px;}
+
+  .picks{display:flex;gap:12px;overflow-x:auto;padding:4px 2px 12px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;}
+  .picks::-webkit-scrollbar{height:6px}
+  .picks::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px}
+  .pick{scroll-snap-align:start;flex:0 0 auto;width:172px;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--r);padding:14px;box-shadow:var(--shadow);cursor:pointer;text-align:left;
+    font-family:inherit;color:inherit;transition:transform .15s ease,border-color .15s ease;}
+  .pick:hover{transform:translateY(-2px);border-color:var(--accent);}
+  .pick:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  .pick .ico{font-size:22px;line-height:1;}
+  .pick .plabel{font-size:10px;text-transform:uppercase;letter-spacing:.12em;font-weight:700;color:var(--gold);margin:10px 0 3px;}
+  .pick .pname{font-family:var(--serif);font-size:17px;font-weight:600;line-height:1.15;}
+  .pick .psub{font-size:12px;color:var(--ink-mute);margin-top:4px;}
+
+  .mapcard{position:relative;z-index:0;isolation:isolate;background:var(--surface-2);
+    border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;}
+  #map{height:clamp(390px,64vh,560px);width:100%;background:var(--surface-2);}
+  .mapfail{padding:40px 22px;text-align:center;color:var(--ink-soft);font-size:14px;}
+  .maplegend{display:flex;flex-wrap:wrap;gap:6px 14px;padding:12px 14px;border-top:1px solid var(--line);background:var(--surface);}
+  .lg{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-soft);font-weight:600;}
+  .lg i{width:10px;height:10px;border-radius:50%;display:inline-block;}
+  .maphint{font-size:11.5px;color:var(--ink-mute);padding:0 2px;margin-top:8px;}
+
+  .filterbar{position:sticky;top:0;z-index:600;background:color-mix(in srgb,var(--bg) 88%,transparent);
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);margin:22px -16px 4px;padding:10px 16px;border-bottom:1px solid var(--line);}
+  .chips{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px;}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:0 0 auto;border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);
+    font-family:var(--sans);font-size:13px;font-weight:600;padding:7px 13px;border-radius:999px;cursor:pointer;
+    display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:all .14s ease;}
+  .chip:hover{border-color:var(--accent);color:var(--ink);}
+  .chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  .chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink);}
+  .chip .dot{width:8px;height:8px;border-radius:50%;}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:12px;}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:15px 15px 13px;
+    box-shadow:var(--shadow);display:flex;flex-direction:column;gap:9px;position:relative;scroll-margin-top:80px;border-left:4px solid var(--cat);}
+  .card.flash{animation:flash 1.4s ease;}
+  @keyframes flash{0%{box-shadow:0 0 0 0 var(--cat)}30%{box-shadow:0 0 0 3px var(--cat)}100%{box-shadow:var(--shadow)}}
+  .card .top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .card h3{font-size:17.5px;line-height:1.15;}
+  .tag{font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:var(--cat);white-space:nowrap;padding-top:3px;}
+  .star{color:var(--gold);font-weight:700;}
+  .blurb{font-size:13.5px;color:var(--ink-soft);margin:0;}
+  .meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--ink-mute);}
+  .meta .price{color:var(--ink-soft);font-weight:700;}
+  .meta .sep{opacity:.4;}
+  .stats{display:flex;gap:6px;flex-wrap:wrap;}
+  .stat{background:var(--surface-3);border-radius:8px;padding:4px 9px;font-size:11.5px;color:var(--ink-soft);
+    font-weight:600;display:inline-flex;gap:5px;align-items:center;font-variant-numeric:tabular-nums;}
+  .stat b{color:var(--ink);font-weight:700;}
+  .note{font-size:11.5px;color:var(--ink-mute);background:var(--surface-2);border-radius:8px;padding:6px 9px;border:1px dashed var(--line);}
+  .note b{color:var(--gold);}
+  .actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:2px;}
+  .btn{font-family:var(--sans);font-size:12.5px;font-weight:600;border-radius:9px;padding:7px 11px;display:inline-flex;
+    align-items:center;gap:6px;cursor:pointer;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);
+    transition:all .14s ease;white-space:nowrap;text-decoration:none;}
+  .btn:hover{border-color:var(--accent);color:var(--accent-ink);}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .btn.primary:hover{filter:brightness(1.06);color:#fff;}
+  .btn.ghost{background:transparent;}
+  .btn svg{width:13px;height:13px;}
+
+  footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-mute);}
+  .hide{display:none!important;}
+
+  /* leaflet markers + popups */
+  .mk{position:relative;}
+  .mk-dot{position:absolute;left:50%;top:50%;width:15px;height:15px;border-radius:50%;transform:translate(-50%,-50%);
+    border:2px solid var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.45);}
+  .mk-ring{position:absolute;left:50%;top:50%;width:23px;height:23px;border-radius:50%;transform:translate(-50%,-50%);
+    border:2px solid var(--gold);}
+  .leaflet-container{font-family:var(--sans);background:var(--surface-2);}
+  .leaflet-popup-content-wrapper{background:var(--surface);color:var(--ink);border-radius:12px;box-shadow:var(--shadow);}
+  .leaflet-popup-tip{background:var(--surface);}
+  .leaflet-popup-content{margin:12px 14px;min-width:180px;}
+  .pop-tag{font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;}
+  .pop h4{font-size:16px;margin:2px 0 5px;}
+  .pop p{font-size:12.5px;color:var(--ink-soft);margin:0 0 9px;}
+  .pop .stats{margin:0 0 9px;}
+  .marker-cluster-small,.marker-cluster-medium,.marker-cluster-large{background:transparent;}
+  .marker-cluster-small div,.marker-cluster-medium div,.marker-cluster-large div{
+    background:var(--accent);color:#fff;font-family:var(--sans);font-weight:700;
+    border:2px solid var(--surface);box-shadow:0 1px 5px rgba(0,0,0,.35);}
+  .leaflet-bar a{background:var(--surface);color:var(--ink);border-color:var(--line);}
+  .leaflet-bar a:hover{background:var(--surface-2);}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<button class="themebtn" id="themebtn" type="button" aria-label="Toggle light / dark">☾</button>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Kent coast · weekend recce</div>
+    <h1>Deal — <em>could we live here?</em></h1>
+    <p class="lede">A pocket guide for the weekend: the best food, pubs, coffee, walks, rides and sport in and around town — on a real map, filterable, with <b>one tap to Google Maps</b> for every spot. Tap a pick, a pin, or a filter to explore.</p>
+  </header>
+
+  <section class="sec" aria-label="Weekend picks">
+    <div class="sec-h"><h2>Weekend picks</h2><span class="count">Robyn's shortlist</span></div>
+    <div class="picks" id="picks"></div>
+  </section>
+
+  <section class="sec" aria-label="Map">
+    <div class="sec-h"><h2>The map</h2><span class="count">pan, zoom &amp; tap a pin</span></div>
+    <div class="mapcard">
+      <div id="map"></div>
+      <div class="maplegend" id="legend"></div>
+    </div>
+    <p class="maphint">Every place is pinned by real location — pins group into numbers when zoomed out; tap a cluster to zoom in. Tap a pin for details, then <b>Open in Google Maps</b> to navigate. Needs an internet connection for the map.</p>
+  </section>
+
+  <div class="filterbar"><div class="chips" id="chips"></div></div>
+  <div id="sections"></div>
+
+  <footer>
+    Gathered ~July 2026 for Matthew &amp; Robyn. Ratings, hours and openings change — check before you go. Map data © OpenStreetMap contributors, tiles © CARTO. Made with love for a good weekend. 🌊
+  </footer>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+const CATS={eat:{label:"Eat",ico:"🍽️"},pub:{label:"Pubs",ico:"🍺"},coffee:{label:"Coffee",ico:"☕"},
+  chippy:{label:"Chippies",ico:"🐟"},walk:{label:"Walks",ico:"🥾"},cycle:{label:"Cycling",ico:"🚴"},sport:{label:"Sport",ico:"🏅"}};
+const SECTION_ORDER=["eat","pub","coffee","chippy","walk","cycle","sport"];
+const K=id=>"https://www.komoot.com/smarttour/"+id;
+
+const P=[
+  {cat:"eat",name:"Holy Dough",type:"Pizza",pick:"pizza",price:"£–££",area:"Mill Road",lat:51.2268,lng:1.3985,
+   blurb:"Detroit + Neapolitan slices, widely called the best pizza in Deal. Tiny, takeaway-led."},
+  {cat:"eat",name:"Salentino's",type:"Italian",price:"££",area:"High St",lat:51.2230,lng:1.4015,
+   blurb:"Long-standing sit-down pizzeria & pasta. Reliable; reviews mixed but a solid family option."},
+  {cat:"eat",name:"81 Beach Street",type:"Seafood & grill",price:"££–£££",area:"Beach St",lat:51.2242,lng:1.4035,
+   blurb:"Seafront institution since 2004 — fresh fish, steaks and sea views."},
+  {cat:"eat",name:"The Rose",type:"Modern British",price:"£££",area:"High St",lat:51.2215,lng:1.4008,
+   blurb:"Boutique-hotel restaurant, seasonal local produce — the town's date-night / celebration spot."},
+  {cat:"eat",name:"The Bohemian",type:"Modern British",price:"££",area:"47 Beach St",lat:51.2230,lng:1.4033,
+   blurb:"Artsy bar-restaurant with brunch, strong cocktails and upstairs sea views."},
+  {cat:"eat",name:"The Goodwin",type:"Gastropub",price:"££",area:"32 High St",lat:51.2225,lng:1.4010,
+   blurb:"Modern gastropub — pan-roasted fish, chargrilled meats, decent wine list."},
+  {cat:"eat",name:"The Blue Pelican",type:"Japanese",price:"££",area:"Beach St",lat:51.2246,lng:1.4036,
+   blurb:"Japanese twist on British produce — ramen, tempura, sake martinis. Distinctive."},
+  {cat:"eat",name:"Dine India",type:"Indian",price:"££",area:"Central Deal",lat:51.2240,lng:1.4000,
+   blurb:"Cited as the best Indian in town now — dine-in and delivery."},
+  {cat:"eat",name:"Star of India",type:"Indian",price:"££",area:"Central Deal",lat:51.2235,lng:1.4005,
+   blurb:"Strong for consistency and takeaway; well-rated regular."},
+  {cat:"eat",name:"Le Pinardier",type:"Wine bar · small plates",price:"££–£££",area:"High St",lat:51.2225,lng:1.4012,
+   blurb:"Anglo-French wine bar, ~300 wines and small plates — a long, lazy wine-paired lunch."},
+  {cat:"eat",name:"Arno & Co",type:"Deli-café",price:"£–££",area:"High St",lat:51.2226,lng:1.4013,
+   blurb:"Grocer-deli doing restaurant-quality takeaway — focaccia, bagels, salads. Great beach picnics & pastries."},
+  {cat:"eat",name:"Algar Lodge Farm Shop & Café",type:"Farm shop 🧺",pick:"farm",price:"££",area:"Sandwich Rd, CT14 0AS",lat:51.2320,lng:1.3900,
+   blurb:"The proper farm-shop answer — in-house butchery, deli and bakery, lots of Kentish produce, café, open 7 days."},
+  {cat:"eat",name:"Updown Farmhouse",type:"Farm dining 🧺",price:"£££",area:"Betteshanger, CT14 0EF",lat:51.2330,lng:1.3480,nearby:true,
+   blurb:"Michelin-Guide farmhouse restaurant-with-rooms, open-fire cooking — the upmarket 'somewhere to take visitors' pick.",note:"~8 min drive out of town."},
+  {cat:"pub",name:"The Zetland Arms",type:"Beachfront pub",pick:"pub",price:"££",area:"Wellington Parade, Kingsdown",lat:51.1980,lng:1.4030,
+   blurb:"Beachfront pub with roasts and sea views — your favourite. Right on the shingle at Kingsdown.",note:"Kingsdown — ~10 min south."},
+  {cat:"pub",name:"The Prince Albert",type:"Real-ale pub · Sunday roast",pick:"roast",price:"££",area:"187 Middle St",lat:51.22907,lng:1.40332,
+   blurb:"Cosy Georgian corner pub just off the seafront — well-kept local cask ales and a home-cooked Sunday roast that's famous across town. ~4.5★, a proper local.",note:"Roast served in limited Sunday sittings (~12–3 & 4–7pm); kitchen otherwise evenings. Worth ringing ahead: 01304 375425."},
+  {cat:"pub",name:"The Ship Inn",type:"Roast + real ale",price:"££",area:"141 Middle St",lat:51.2248,lng:1.4025,
+   blurb:"Unspoilt Middle Street pub — homemade pies, proper Sunday roasts, rotating real ales (CAMRA award). The all-rounder."},
+  {cat:"pub",name:"The Just Reproach",type:"Micropub",price:"£",area:"14 King St",lat:51.2238,lng:1.4018,
+   blurb:"Beloved micropub — cask ales & ciders only, no keg, no music, no fruit machines. Pure conversation. Multiple CAMRA wins."},
+  {cat:"pub",name:"The King's Head",type:"Seafront pub",price:"££",area:"9 Beach St",lat:51.2258,lng:1.4033,
+   blurb:"Seafront pub, pub classics plus locally-landed fish and Kentish ales, Channel views."},
+  {cat:"coffee",name:"Climpson & Sons",type:"Specialty coffee",pick:"coffee",price:"££",area:"High St",lat:51.2222,lng:1.4011,
+   blurb:"The Hackney roaster's first Kent café — cortados, in-house daily bakes, into evening aperitifs. The morning-stroll spot.",note:"Newly opened (~Apr 2026) — worth a quick check it's open."},
+  {cat:"coffee",name:"Hut 55",type:"Beach café",price:"£",area:"Marine Rd (beach)",lat:51.2280,lng:1.4045,
+   blurb:"Beach-hut café right on the seafront, locally-roasted beans, pastries — coffee looking out to sea."},
+  {cat:"coffee",name:"Hope & Lane",type:"Coffee shop",price:"£",area:"High St",lat:51.2220,lng:1.4010,
+   blurb:"Community coffee shop, single-origin beans, dog-friendly, good for people-watching."},
+  {cat:"coffee",name:"The Popup Café",type:"Brunch & coffee",price:"£–££",area:"High St",lat:51.2218,lng:1.4008,
+   blurb:"Takes coffee seriously — organic eggs, single-estate dairy, veggie brunch. Leisurely breakfast."},
+  {cat:"coffee",name:"Little Harriettes Tea Rooms",type:"Tea room",price:"£–££",area:"Central Deal",lat:51.2230,lng:1.4010,
+   blurb:"Very highly rated (~4.8) traditional tea room — scones and cakes, a classic weekend treat."},
+  {cat:"chippy",name:"Middle Street Fish Bar",type:"Fish & chips",pick:"chippy",price:"£–££",area:"27 Middle St",lat:51.2240,lng:1.4023,
+   blurb:"Consensus best fish & chips in Deal / East Kent — cooked to order, light batter, big portions. Sit-down upstairs.",note:"Cash-only · split hours · expect a queue."},
+  {cat:"chippy",name:"Bellamy's Fish Bar",type:"Fish & chips",price:"£",area:"Central Deal",lat:51.2233,lng:1.4008,
+   blurb:"Solid local chippy — a good backup when Middle Street has a queue."},
+  {cat:"walk",name:"Deal Seafront / Timeball Tower loop",dist:"4.7 km",distmi:"2.9 mi",elev:"~10 m",diff:"Easy",lat:51.2247,lng:1.4043,
+   blurb:"Flat promenade past the pier, Timeball Tower and Georgian seafront — the gentle 'get to know the town' walk.",links:[{l:"Komoot route",u:K("41790271")}]},
+  {cat:"walk",name:"Deal → Walmer promenade (castle to castle)",dist:"3.2 km",distmi:"2 mi",elev:"Flat",diff:"Easy",lat:51.2203,lng:1.4044,
+   blurb:"Level seafront linking Deal Castle and Walmer Castle, colourful beach huts, the Zetland at the end.",links:[{l:"Explore Kent",u:"https://explorekent.org/activities/walmer-to-deal-castle/"}]},
+  {cat:"walk",name:"Kingsdown → Walmer circular",dist:"3.5 km",distmi:"2.2 mi",elev:"Gentle",diff:"Easy–mod",lat:51.1828,lng:1.4011,nearby:true,
+   blurb:"Coastal views, wildflower meadows, a stretch of the Saxon Shore Way, pubs and Walmer Castle en route.",links:[{l:"Explore Kent",u:"https://explorekent.org/activities/kingsdown-walmer-walk/"}]},
+  {cat:"walk",name:"Betteshanger Country Park loop",dist:"7.5 km",distmi:"4.7 mi",elev:"Modest",diff:"Easy",lat:51.2480,lng:1.3540,nearby:true,
+   blurb:"Woodland & lakeside on a reclaimed colliery site, coast panoramas. Traffic-free, dog- & bike-friendly, café on site.",links:[{l:"HiiKER map",u:"https://hiiker.app/trails/england/kent/betteshanger-fowlmead-country-park/map"},{l:"Park site",u:"https://www.betteshanger-park.co.uk/"}]},
+  {cat:"walk",name:"Deal → Sandwich (Saxon Shore Way)",dist:"9.7 km",distmi:"6 mi",elev:"Flat",diff:"Moderate",lat:51.2239,lng:1.4047,nearby:true,
+   blurb:"Coast then marsh and dunes past the golf links into medieval Sandwich. Train back makes it easy.",links:[{l:"AllTrails",u:"https://www.alltrails.com/trail/england/kent/saxon-shore-way-deal-to-sandwich"},{l:"Komoot loop",u:K("8501952")}]},
+  {cat:"walk",name:"Sandwich & Pegwell Bay circular",dist:"12.7 km",distmi:"7.9 mi",elev:"Flat",diff:"Easy (long)",lat:51.2750,lng:1.3380,nearby:true,
+   blurb:"River Stour towpath, saltmarsh and a top Kent birdwatching reserve, looping the golf courses.",links:[{l:"AllTrails",u:"https://www.alltrails.com/en-gb/trail/england/kent/sandwich-pegwell-bay-circular"}]},
+  {cat:"walk",name:"Kingsdown → White Cliffs (Dover Patrol) loop",dist:"20 km",distmi:"12.4 mi",elev:"~150 m",diff:"Hard",lat:51.2230,lng:1.4040,nearby:true,
+   blurb:"The big coastal day out — Kingsdown cliffs, the Dover Patrol Memorial, chalk clifftops, France on the horizon.",links:[{l:"Komoot route",u:K("34920777")}]},
+  {cat:"walk",name:"White Cliffs Path: Dover → Deal",dist:"17 km",distmi:"10.6 mi",elev:"~400 m",diff:"Moderate",lat:51.1257,lng:1.3036,nearby:true,
+   blurb:"The showpiece — South Foreland Lighthouse, St Margaret's Bay, Kingsdown, finishing at Deal Castle. Train out to Dover.",links:[{l:"AllTrails",u:"https://www.alltrails.com/trail/england/kent/white-cliffs-path-dover-to-deal"}]},
+  {cat:"walk",name:"White Cliffs loop from Walmer",dist:"25.1 km",distmi:"15.6 mi",elev:"~540 m",diff:"Hard",lat:51.2050,lng:1.4030,nearby:true,
+   blurb:"The most popular full-day circular — cliffs, sea views, Dover harbour, all as a loop (no transport needed back).",links:[{l:"Komoot route",u:K("1407887")}]},
+  {cat:"cycle",name:"Deal Seafront – Pier loop",dist:"24.3 km",distmi:"15.1 mi",elev:"~30 m",diff:"Easy · road",lat:51.2239,lng:1.4047,
+   blurb:"Gentle, largely traffic-light flat loop — seafront, pier, Walmer and the marsh edge. The ideal 'learn the area' ride.",links:[{l:"Komoot route",u:K("37494024")}]},
+  {cat:"cycle",name:"Betteshanger family loop + closed-road circuit",dist:"14.8 km",distmi:"+3.5 km circuit",elev:"~60 m",diff:"Easy · traffic-free",lat:51.2480,lng:1.3540,nearby:true,
+   blurb:"National-standard car-free tarmac race circuit plus gentle park loops. Cycle hire & café on site.",links:[{l:"Komoot route",u:K("30890553")},{l:"Park cycling",u:"https://www.betteshanger-park.co.uk/activities/cycling/"}]},
+  {cat:"cycle",name:"Betteshanger Red Trail (MTB)",dist:"10+ km",distmi:"trails",elev:"—",diff:"Hard · MTB",lat:51.2482,lng:1.3542,nearby:true,
+   blurb:"Woodland singletrack and berms — the area's only dedicated MTB centre. A Blue trail is the easier core loop.",note:"Trails reopening in phases — check the park site.",links:[{l:"Komoot route",u:K("15500804")}]},
+  {cat:"cycle",name:"Deal / Walmer → Sandwich Quay loop",dist:"49.1 km",distmi:"30.5 mi",elev:"~180 m",diff:"Moderate · road",lat:51.2050,lng:1.4031,nearby:true,
+   blurb:"The classic flat coastal outing — Deal & Walmer seafronts up to medieval Sandwich and its quay, past the golf links.",links:[{l:"Komoot route",u:K("18450316")}]},
+  {cat:"cycle",name:"Sandwich Quay / Royal Cinque Ports loop (NCN 1)",dist:"51.7 km",distmi:"32.1 mi",elev:"~170 m",diff:"Moderate · road/gravel",lat:51.2239,lng:1.4048,nearby:true,
+   blurb:"Flat loop stringing together coast and Stour marshes on the golf-club toll road (free to bikes) that NCN 1 uses.",links:[{l:"Komoot route",u:K("35177373")}]},
+  {cat:"cycle",name:"Dover Port view / Deal Castle loop",dist:"29.6 km",distmi:"18.4 mi",elev:"~230 m",diff:"Moderate · road",lat:51.2051,lng:1.4032,nearby:true,
+   blurb:"Leaves the coast for quiet Kingsdown/Ringwould lanes with cliff and harbour views, back to Deal Castle. Best coast-and-countryside half-day.",links:[{l:"Komoot route",u:K("38420133")},{l:"Village lanes guide",u:"https://www.komoot.com/guide/728625/road-cycling-routes-around-ripple"}]},
+  {cat:"cycle",name:"Canterbury Cathedral – Dover – Deal Castle loop",dist:"70 km",distmi:"43.5 mi",elev:"~590 m",diff:"Moderate · big day",lat:51.2203,lng:1.4045,nearby:true,
+   blurb:"The proper road day out — rolling downland lanes toward Canterbury, then Dover and back along the coast. Links three great landmarks.",links:[{l:"Komoot route",u:"https://www.komoot.com/smarttour/e817573772/canterbury-cathedral-dover-and-deal-castle-loop"},{l:"107 km option",u:K("35142942")}]},
+  {cat:"cycle",name:"NCN Route 1 through Deal",dist:"Signed",distmi:"coast route",elev:"Flat",diff:"Easy–mod",lat:51.2239,lng:1.4049,
+   blurb:"Kingsdown → Walmer → Deal → Sandwich. The Kingsdown–Deal stretch is largely traffic-free along the seafront; hybrid/gravel suits the toll-road section north.",links:[{l:"Sustrans",u:"https://www.sustrans.org.uk/find-a-route-on-the-national-cycle-network/route-1/"},{l:"cycle.travel map+GPX",u:"https://cycle.travel/route/summary/156588"}]},
+  {cat:"sport",name:"Betteshanger Country Park",type:"Cycling / velo",area:"Sandwich Rd, CT14 0BF",lat:51.2500,lng:1.3540,nearby:true,
+   blurb:"~3.5 km closed-road race circuit + MTB trails + BMX + traffic-free family road. The area's 'velo park'. No indoor velodrome locally.",note:"Bike hire / MTB may pause for updates — check track/park closures.",links:[{l:"Closures",u:"https://www.betteshanger-park.co.uk/track-park-closures/"}]},
+  {cat:"sport",name:"Play Padel Club: Deal",type:"Padel",area:"Victoria Park, CT14 9UU",lat:51.2280,lng:1.3970,
+   blurb:"Three covered panoramic courts, pay-and-play & membership via Playtomic, coaching, pro shop. LTA Kent Club of the Year — in town.",links:[{l:"Playtomic",u:"https://playtomic.com/clubs/play-padel-club-deal"}]},
+  {cat:"sport",name:"Deal Squash Club",type:"Squash",area:"Central Deal",lat:51.2230,lng:1.4000,
+   blurb:"Small, historic club (about one court). For reliable multi-court booking, Dover District Leisure Centre (~15–20 min) is the practical option.",links:[{l:"Kent SRA clubs",u:"https://www.kentsra.co.uk/clubs"}]},
+  {cat:"sport",name:"Tides Leisure Centre",type:"Leisure centre",area:"Victoria Park, CT14 9UU",lat:51.2280,lng:1.3960,
+   blurb:"Gym, sports hall and 4-court Deal Indoor Tennis Centre. The town's main leisure hub.",note:"Pool closed for a ~£20m rebuild until ~2027 — nearest public pool ~15–20 min at Dover. Hall & tennis stay open.",links:[{l:"Your Leisure",u:"https://yourleisure.uk.com"}]},
+  {cat:"sport",name:"Royal Cinque Ports Golf Club",type:"Golf · links",area:"Golf Rd, CT14 6RF",lat:51.2380,lng:1.4050,
+   blurb:"Championship links, past Open venue (1909 & 1920). A genuine local strength — right in town.",links:[{l:"Course info",u:"https://www.top100golfcourses.com/golf-course/royal-cinque-ports"}]},
+  {cat:"sport",name:"Walmer & Kingsdown Golf Club",type:"Golf · downland",area:"The Leas, Kingsdown",lat:51.1750,lng:1.4030,nearby:true,
+   blurb:"18-hole downland course ranked among England's better courses. ~10 min south."},
+  {cat:"sport",name:"Walmer Lawn Tennis & Croquet Club",type:"Tennis · grass",area:"Archery Sq, Walmer",lat:51.2050,lng:1.4000,
+   blurb:"Historic (est. 1883) — reputedly the 4th-oldest club still on its original grass courts. Six grass + two hard courts, croquet lawns.",links:[{l:"Club site",u:"https://www.walmertennisclub.co.uk"}]},
+  {cat:"sport",name:"Downs Sailing Club",type:"Sailing",area:"Deal seafront",lat:51.2200,lng:1.4030,
+   blurb:"Seafront sailing club since 1949 — clubhouse, training room, changing facilities. Named after 'The Downs' anchorage."},
+  {cat:"sport",name:"Deal, Walmer & Kingsdown ARC",type:"Coastal rowing",area:"Deal seafront",lat:51.2170,lng:1.4020,
+   blurb:"Coastal rowing club on the seafront — described as the most successful coastal club in Kent."},
+  {cat:"sport",name:"Total Fitness Mix",type:"Gym",area:"Central Deal",lat:51.2250,lng:1.4000,
+   blurb:"Two-storey independent gym — free/Olympic weights, cardio, functional training, classes. (No budget chains in town.)"},
+  {cat:"sport",name:"Dover District Leisure Centre",type:"Pool + squash",area:"Whitfield, Dover",lat:51.1560,lng:1.2900,nearby:true,
+   blurb:"The nearest full swimming pool while Tides is rebuilt, plus 2 squash/racketball courts. ~15–20 min drive.",links:[{l:"Places Leisure",u:"https://www.placesleisure.org/centres/dover-district-leisure-centre/"}]},
+  {cat:"sport",name:"REWD Padel, Ramsgate",type:"Padel",area:"Ramsgate",lat:51.3400,lng:1.4000,nearby:true,
+   blurb:"Billed as Kent's first purpose-built padel centre. ~20–25 min — extra courts if you want variety."},
+  {cat:"eat",name:"Quex Barn",type:"Farm shop 🧺",price:"££",area:"Birchington",lat:51.3720,lng:1.3120,nearby:true,
+   blurb:"Larger farm-shop-plus-food destination if you're happy to drive further out."}
+];
+
+// Load the place on Google Maps (its card / dropped pin) rather than starting turn-by-turn —
+// the user can then hit Navigate in Google Maps themselves.
+const mapsUrl=p=>{
+  if(p.dist) return `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}`; // routes: exact start point
+  // in-town spots get ", Deal, Kent" so generic names don't resolve elsewhere; out-of-town keep their own place name
+  const loc=p.nearby ? `${p.area?p.area+', ':''}Kent` : `${p.area?p.area+', ':''}Deal, Kent`;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name+', '+loc)}`;
+};
+const catVar=c=>`var(--cat-${c})`;
+
+/* ---------- PICKS ---------- */
+const PICKS=[
+  {ico:"🍕",label:"Best pizza",name:"Holy Dough",sub:"Detroit + Neapolitan"},
+  {ico:"🍺",label:"Your pub",name:"The Zetland Arms",sub:"Beachfront, Kingsdown"},
+  {ico:"🥩",label:"Best roast",name:"The Prince Albert",sub:"Famous local Sunday roast"},
+  {ico:"☕",label:"Coffee",name:"Climpson & Sons",sub:"Morning-stroll spot"},
+  {ico:"🐟",label:"Best chippy",name:"Middle Street Fish Bar",sub:"East Kent's finest"},
+  {ico:"🧺",label:"Farm shop",name:"Algar Lodge Farm Shop & Café",sub:"+ Updown to eat"}
+];
+const picksEl=document.getElementById('picks');
+PICKS.forEach(pk=>{
+  const b=document.createElement('button');b.className='pick';b.type='button';
+  b.innerHTML=`<div class="ico">${pk.ico}</div><div class="plabel">${pk.label}</div><div class="pname">${pk.name}</div><div class="psub">${pk.sub}</div>`;
+  b.addEventListener('click',()=>showOnMap(pk.name,true));
+  picksEl.appendChild(b);
+});
+
+/* ---------- CARDS ---------- */
+const secWrap=document.getElementById('sections');
+const cardById={};
+const pinIco='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11Z"/><circle cx="12" cy="10" r="2.4"/></svg>';
+function statsHtml(p){return p.dist?`<div class="stats"><span class="stat">↔ <b>${p.dist}</b>${p.distmi?` <span style="opacity:.6">${p.distmi}</span>`:''}</span><span class="stat">⛰ <b>${p.elev}</b></span><span class="stat">${p.diff}</span></div>`:'';}
+SECTION_ORDER.forEach(cat=>{
+  const items=P.filter(p=>p.cat===cat);
+  const sec=document.createElement('section');sec.className='sec';sec.dataset.cat=cat;
+  sec.innerHTML=`<div class="sec-h"><h2>${CATS[cat].ico} ${CATS[cat].label}</h2><span class="count">${items.length} spots</span></div>`;
+  if(cat==='walk')sec.querySelector('.sec-h').insertAdjacentHTML('afterend',`<p class="sec-note">Name · distance · elevation · difficulty, with the Komoot / AllTrails route link.</p>`);
+  if(cat==='cycle')sec.querySelector('.sec-h').insertAdjacentHTML('afterend',`<p class="sec-note">Road, gravel and MTB — every route links out to Komoot (or Sustrans for NCN 1).</p>`);
+  const grid=document.createElement('div');grid.className='grid';
+  items.forEach(p=>{
+    const card=document.createElement('article');card.className='card';card.dataset.cat=p.cat;card.dataset.nearby=p.nearby?1:0;
+    card.style.setProperty('--cat',catVar(p.cat));
+    const tag=p.type?p.type:(p.cat==='walk'?'Walk':p.cat==='cycle'?'Ride':'');
+    const starTxt=p.pick?`<span class="star" title="Weekend pick">★</span>`:'';
+    let metaHtml='';
+    if(!p.dist){const bits=[];if(p.price)bits.push(`<span class="price">${p.price}</span>`);if(p.area)bits.push(`<span>${p.area}</span>`);metaHtml=`<div class="meta">${bits.join('<span class="sep">·</span>')}</div>`;}
+    const noteHtml=p.note?`<div class="note"><b>Note</b> · ${p.note}</div>`:'';
+    let links='';(p.links||[]).forEach(L=>{links+=`<a class="btn" href="${L.u}" target="_blank" rel="noopener">${L.l} ↗</a>`;});
+    card.innerHTML=`<div class="top"><h3>${starTxt}${p.name}</h3>${tag?`<span class="tag">${tag}</span>`:''}</div>
+      <p class="blurb">${p.blurb}</p>${statsHtml(p)}${metaHtml}${noteHtml}
+      <div class="actions">
+        <a class="btn primary" href="${mapsUrl(p)}" target="_blank" rel="noopener">${pinIco} Open in Google Maps</a>
+        <button class="btn ghost" type="button" data-map="${p.name}">Show on map</button>
+        ${links}
+      </div>`;
+    grid.appendChild(card);cardById[p.name]=card;
+  });
+  sec.appendChild(grid);secWrap.appendChild(sec);
+});
+secWrap.addEventListener('click',e=>{const b=e.target.closest('[data-map]');if(b)showOnMap(b.dataset.map,true);});
+
+/* ---------- FILTER CHIPS ---------- */
+const chipsEl=document.getElementById('chips');
+const filters=[{k:'all',label:'All'}].concat(SECTION_ORDER.map(c=>({k:c,label:CATS[c].label,cat:c}))).concat([{k:'nearby',label:'Nearby / day-trip'}]);
+let active='all';
+filters.forEach(f=>{
+  const c=document.createElement('button');c.className='chip';c.type='button';c.dataset.k=f.k;c.setAttribute('aria-pressed',f.k==='all');
+  const dot=f.cat?`<span class="dot" style="background:${catVar(f.cat)}"></span>`:(f.k==='nearby'?`<span class="dot" style="background:var(--cat-nearby)"></span>`:'');
+  c.innerHTML=`${dot}${f.label}`;c.addEventListener('click',()=>applyFilter(f.k));chipsEl.appendChild(c);
+});
+function matches(k,cat,nearby){return k==='all'?true:k==='nearby'?nearby:cat===k;}
+function applyFilter(k){
+  active=k;
+  [...chipsEl.children].forEach(ch=>ch.setAttribute('aria-pressed',ch.dataset.k===k));
+  document.querySelectorAll('.card').forEach(card=>card.classList.toggle('hide',!matches(k,card.dataset.cat,card.dataset.nearby==='1')));
+  document.querySelectorAll('#sections .sec').forEach(sec=>{const any=[...sec.querySelectorAll('.card')].some(c=>!c.classList.contains('hide'));sec.classList.toggle('hide',!any);});
+  renderMarkers();
+}
+
+/* ---------- LEGEND ---------- */
+const legend=document.getElementById('legend');
+SECTION_ORDER.forEach(c=>legend.insertAdjacentHTML('beforeend',`<span class="lg"><i style="background:${catVar(c)}"></i>${CATS[c].label}</span>`));
+legend.insertAdjacentHTML('beforeend',`<span class="lg"><i style="background:none;border:1.8px solid var(--gold)"></i>Weekend pick</span>`);
+
+/* ---------- THEME ---------- */
+const themeBtn=document.getElementById('themebtn');
+const mq=window.matchMedia('(prefers-color-scheme:dark)');
+let theme=localStorage.getItem('deal-theme')||(mq.matches?'dark':'light');
+const LIGHT_TILES='https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+const DARK_TILES='https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+let tiles=null;
+function setTheme(t){theme=t;document.documentElement.setAttribute('data-theme',t);localStorage.setItem('deal-theme',t);
+  themeBtn.textContent=t==='dark'?'☀':'☾';if(tiles)tiles.setUrl(t==='dark'?DARK_TILES:LIGHT_TILES);}
+themeBtn.addEventListener('click',()=>setTheme(theme==='dark'?'light':'dark'));
+setTheme(theme);
+
+/* ---------- MAP (Leaflet) ---------- */
+let map,cluster,markerByName={};
+function markerIcon(p){
+  const ring=p.pick?'<span class="mk-ring"></span>':'';
+  return L.divIcon({className:'mk',html:`${ring}<span class="mk-dot" style="background:${catVar(p.cat)}"></span>`,iconSize:[24,24],iconAnchor:[12,12],popupAnchor:[0,-11]});
+}
+function popupHtml(p){
+  const tag=p.type||(p.cat==='walk'?'Walk':p.cat==='cycle'?'Ride':'');
+  let links='';(p.links||[]).forEach(L=>{links+=`<a class="btn" href="${L.u}" target="_blank" rel="noopener">${L.l} ↗</a>`;});
+  return `<div class="pop"><div class="pop-tag" style="color:${catVar(p.cat)}">${tag}</div>
+    <h4>${p.pick?'★ ':''}${p.name}</h4><p>${p.blurb}</p>${statsHtml(p)}
+    <div class="actions"><a class="btn primary" href="${mapsUrl(p)}" target="_blank" rel="noopener">Open in Google Maps</a>${links}</div></div>`;
+}
+function renderMarkers(){
+  if(!cluster)return;
+  cluster.clearLayers();
+  P.forEach(p=>{if(matches(active,p.cat,p.nearby))cluster.addLayer(markerByName[p.name]);});
+}
+function showOnMap(name){
+  const p=P.find(x=>x.name===name);if(!p)return;
+  const card=cardById[name];
+  if(card&&card.classList.contains('hide'))applyFilter('all'); // un-hide + re-render markers so it's on the map
+  if(map)document.querySelector('.mapcard').scrollIntoView({behavior:'smooth',block:'start'});
+  const m=markerByName[name];
+  if(map&&cluster&&m){
+    // zoomToShowLayer declusters to the marker (works whether it's clustered or already visible), then opens the popup
+    setTimeout(()=>cluster.zoomToShowLayer(m,()=>m.openPopup()),350);
+  }else if(map){
+    map.flyTo([p.lat,p.lng],16,{duration:.6});
+  }
+  if(card){card.classList.remove('flash');void card.offsetWidth;card.classList.add('flash');}
+}
+function initMap(){
+  map=L.map('map',{scrollWheelZoom:false,zoomControl:false}).setView([51.2225,1.4005],14);
+  L.control.zoom({position:'bottomleft'}).addTo(map);   // out of the way of the theme toggle & top-opening popups
+  map.on('click',()=>map.scrollWheelZoom.enable());
+  tiles=L.tileLayer(theme==='dark'?DARK_TILES:LIGHT_TILES,{maxZoom:19,subdomains:'abcd',
+    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'}).addTo(map);
+  cluster=L.markerClusterGroup({maxClusterRadius:44,spiderfyOnMaxZoom:true,showCoverageOnHover:false});
+  P.forEach(p=>{const m=L.marker([p.lat,p.lng],{icon:markerIcon(p),title:p.name});
+    m.bindPopup(popupHtml(p),{closeButton:true,maxWidth:250,autoPanPadding:[18,18],keepInView:true});markerByName[p.name]=m;});
+  map.addLayer(cluster);renderMarkers();
+  // guard against the container starting at zero size (backgrounded/slow-laying-out tabs):
+  // recompute whenever it resizes, so the map never renders blank.
+  const mapEl=document.getElementById('map');
+  if('ResizeObserver' in window){
+    let last=0;
+    new ResizeObserver(()=>{const w=mapEl.clientWidth;if(w&&w!==last){last=w;map.invalidateSize();}}).observe(mapEl);
+  }
+  [150,600,1500].forEach(t=>setTimeout(()=>map.invalidateSize(),t));
+}
+if(typeof L==='undefined'||!L.markerClusterGroup){
+  document.getElementById('map').innerHTML='<div class="mapfail">The interactive map needs an internet connection (it couldn\'t load the map library). Everything below still works — each place has a <b>Directions</b> link that opens Apple/Google Maps.</div>';
+}else{initMap();}
+</script>
+</body>
+</html>
